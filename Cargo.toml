@@ -1,0 +1,32 @@
+[package]
+name = "godsvagn"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+rusqlite = { version = "0.36", features = ["bundled"] }
+axum = "0.8"
+openidconnect = "4"
+serde = "1"
+toml = "0.8"
+base16ct = "0.2"
+thiserror = "2"
+pgp = "0.16"
+indexmap = "2"
+jiff = "0.2"
+parking_lot = "0.12"
+parsedeb = { workspace = true }
+filemeta = { workspace = true }
+indexgen = { workspace = true }
+package = { workspace = true }
+
+[workspace]
+members = ["crates/package", "crates/filemeta", "crates/indexgen", "crates/parsedeb"]
+
+[workspace.dependencies]
+parsedeb = { path = "crates/parsedeb" }
+filemeta = { path = "crates/filemeta" }
+indexgen = { path = "crates/indexgen" }
+package = { path = "crates/package" }
+

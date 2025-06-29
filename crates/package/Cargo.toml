@@ -1,0 +1,9 @@
+[package]
+name = "package"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+filemeta = { workspace = true }
+base16ct = "0.2"
+indexmap = "2"

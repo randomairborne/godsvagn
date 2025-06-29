@@ -1,0 +1,13 @@
+[package]
+name = "filemeta"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sha2 = "0.10"
+md-5 = "0.10"
+sha1 = "0.10"
+digest = "0.10"
+
+[package.metadata.cargo-machete]
+ignored = ["md-5"]

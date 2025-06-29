@@ -1,0 +1,12 @@
+[server]
+bind = "0.0.0.0:8080"
+database_path = "godsvagn.db"
+key_path = "private.asc"
+
+[release]
+origin = "godsvagn"
+label = "godsvagn"
+suite = "testing"
+codename = "salolampi"
+version = "0.1"
+description = ""

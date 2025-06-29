@@ -1,0 +1,15 @@
+[package]
+name = "indexgen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base16ct = "0.2"
+thiserror = "2"
+pgp = "0.16"
+flate2 = "1.1.2"
+liblzma = { version = "0.4.2", features = ["static"] }
+parsedeb = { workspace = true }
+filemeta = { workspace = true }
+package = { workspace = true }
+rand = "0.8"
