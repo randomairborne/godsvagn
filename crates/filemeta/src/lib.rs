@@ -5,6 +5,7 @@ use md5::Md5;
 use sha1::Sha1;
 use sha2::Sha256;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileMeta {
     pub path: Box<str>,
     pub size: usize,
@@ -21,6 +22,7 @@ impl FileMeta {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FileSums {
     pub sha1: [u8; 20],
     pub sha256: [u8; 32],

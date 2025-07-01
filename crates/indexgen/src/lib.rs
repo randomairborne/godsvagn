@@ -5,12 +5,18 @@ use package::Package;
 use pgp::{
     composed::{ArmorOptions, CleartextSignedMessage},
     packet::SecretKey,
+    ser::Serialize,
     types::Password,
 };
 use std::{
     collections::{HashMap, hash_map::Entry},
     fmt::Write,
     io::Write as _,
+};
+
+const ARMOR_OPTS: ArmorOptions = ArmorOptions {
+    headers: None,
+    include_checksum: true,
 };
 
 pub fn generate_files(
@@ -40,7 +46,7 @@ pub fn generate_files(
     let indexes_base = [
         FileToUpload {
             destination_path: "InRelease".into(),
-            data: sig.text().as_bytes().into(),
+            data: sig.to_armored_bytes(ARMOR_OPTS)?.into(),
         },
         FileToUpload {
             destination_path: "Release".into(),
@@ -49,12 +55,15 @@ pub fn generate_files(
         FileToUpload {
             destination_path: "Release.gpg".into(),
             data: sig
-                .to_armored_string(ArmorOptions {
-                    headers: None,
-                    include_checksum: true,
-                })?
-                .as_bytes()
+                .signatures()
+                .first()
+                .ok_or(GenerateError::NoSignatures)?
+                .to_armored_bytes(ARMOR_OPTS)?
                 .into(),
+        },
+        FileToUpload {
+            destination_path: "deriv-archive-keyring.pgp".into(),
+            data: key.public_key().to_bytes()?.into(),
         },
     ];
 
@@ -77,6 +86,7 @@ fn gzip(a: &[u8]) -> Result<Vec<u8>, std::io::Error> {
     Ok(gz)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct PackageIndexFile {
     arch: Box<str>,
     path: Box<str>,
@@ -114,6 +124,7 @@ fn result_flat_mapper(
     ])
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct IndexFileWithArch {
     arch: Box<str>,
     contents: Box<str>,
@@ -168,7 +179,7 @@ fn generate_release(
     for file in files {
         writeln!(
             o,
-            " {} {} {}",
+            " {:x} {} {}",
             HexDisplay(&file.sums.md5),
             file.size,
             file.path
@@ -179,7 +190,7 @@ fn generate_release(
     for file in files {
         writeln!(
             o,
-            " {} {} {}",
+            " {:x} {} {}",
             HexDisplay(&file.sums.sha1),
             file.size,
             file.path
@@ -190,7 +201,7 @@ fn generate_release(
     for file in files {
         writeln!(
             o,
-            " {} {} {}",
+            " {:x} {} {}",
             HexDisplay(&file.sums.sha256),
             file.size,
             file.path
@@ -199,12 +210,14 @@ fn generate_release(
     Ok(o)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileToUpload {
     pub destination_path: Box<str>,
     pub data: Box<[u8]>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+
 // these fields are pretty much all freeform, though see https://wiki.debian.org/DebianRepository/Format
 pub struct ReleaseMetadata {
     pub origin: String,
@@ -227,4 +240,6 @@ pub enum GenerateError {
     Compression(&'static str, String, std::io::Error),
     #[error("could not complete hashing for file {0}: {1}")]
     HashFile(Box<str>, std::io::Error),
+    #[error("no signatures created- this is a bug")]
+    NoSignatures,
 }

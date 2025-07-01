@@ -1,6 +1,7 @@
 use filemeta::FileMeta;
 use indexmap::IndexMap;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PackageMeta {
     pub file: FileMeta,
     pub description_md5: [u8; 16],
@@ -23,6 +24,7 @@ impl PackageMeta {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Package {
     pub meta: PackageMeta,
     pub name: Box<str>,

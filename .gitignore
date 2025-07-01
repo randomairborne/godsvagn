@@ -1,3 +1,6 @@
 /target
 private.asc
 *.db
+
+inrepo/
+outrepo/

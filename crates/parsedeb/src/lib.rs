@@ -8,34 +8,21 @@ mod tests;
 type PackageMap = IndexMap<Box<str>, Box<str>>;
 
 pub fn deb_to_control(deb: impl std::io::Read) -> Result<(PackageMap, Box<str>), Error> {
-    let mut raw_ar = ar::Archive::new(deb);
-    while let Some(entry) = raw_ar.next_entry().transpose()? {
-        if entry.header().identifier() == b"control.tar.gz" {
-            let unzipped = flate2::read::GzDecoder::new(entry);
-            let mut untared = tar::Archive::new(unzipped);
-            let Some(control) = untared
-                .entries()?
-                .find(|r| r.as_ref().is_ok_and(|r| *r.path_bytes() == *b"control"))
-            else {
-                return Err(Error::NoControl);
-            };
-            let mut control = control?;
-            let mut out_buf = String::with_capacity(control.size().try_into().unwrap_or(0));
-            control.read_to_string(&mut out_buf)?;
-
-            return Ok((
-                get_control(&out_buf)?.into_iter().map(pack).collect(),
-                out_buf.into_boxed_str(),
-            ));
-        }
-    }
-    Err(Error::NoControlBundle)
+    let raw_controlfile = parse_debfile(deb)?;
+    Ok((
+        get_control(&raw_controlfile)?
+            .into_iter()
+            .map(pack)
+            .collect(),
+        raw_controlfile,
+    ))
 }
 
 pub fn pack((a, b): (&str, &str)) -> (Box<str>, Box<str>) {
     (a.into(), b.into())
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct UnbracketedList<'a, T>(&'a Vec<T>);
 
 impl<'a, T: std::fmt::Display> std::fmt::Display for UnbracketedList<'a, T> {
@@ -78,7 +65,7 @@ pub fn get_control(control: &str) -> Result<IndexMap<&str, &str>, Error> {
 
     let missing_fields: Vec<RequiredField> = RequiredField::ALL
         .into_iter()
-        .filter(|req| keys.required.contains(req))
+        .filter(|req| !keys.required.contains(req))
         .collect();
     if !missing_fields.is_empty() {
         return Err(Error::MissingFields(missing_fields));
@@ -175,7 +162,7 @@ impl std::str::FromStr for ForbiddenField {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum ParseState<'a> {
     CreatingKey(usize),
     SkippingComment,
@@ -265,6 +252,33 @@ pub fn parse_control(input: &str) -> Result<IndexMap<&str, &str>, ParseError> {
     Ok(output)
 }
 
+fn parse_debfile(deb: impl std::io::Read) -> Result<Box<str>, Error> {
+    let mut raw_ar = ar::Archive::new(deb);
+    while let Some(entry) = raw_ar.next_entry().transpose()? {
+        let tar_reader: Box<dyn Read> = match entry.header().identifier() {
+            b"control.tar" => Box::new(entry),
+            b"control.tar.gz" => Box::new(flate2::read::GzDecoder::new(entry)),
+            b"control.tar.xz" => Box::new(liblzma::read::XzDecoder::new(entry)),
+            b"control.tar.zst" => Box::new(zstd::Decoder::new(entry)?),
+            _ => continue,
+        };
+        let mut untared = tar::Archive::new(tar_reader);
+        let Some(control) = untared.entries()?.find(|r| {
+            r.as_ref()
+                .is_ok_and(|r| *r.path_bytes() == *b"control" || *r.path_bytes() == *b"./control")
+        }) else {
+            return Err(Error::NoControl);
+        };
+        let mut control = control?;
+        let mut out_buf = String::with_capacity(control.size().try_into().unwrap_or(0));
+        control.read_to_string(&mut out_buf)?;
+
+        return Ok(out_buf.into_boxed_str());
+    }
+    Err(Error::NoControlBundle)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct ExtractedKeys {
     required: Vec<RequiredField>,
     forbidden: Vec<ForbiddenField>,
