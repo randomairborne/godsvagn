@@ -9,12 +9,7 @@ use std::{
 };
 
 use axum::{
-    Router,
-    body::Body,
-    extract::{Request, State},
-    middleware::Next,
-    response::{IntoResponse, Response},
-    routing::post,
+    body::Body, extract::{Query, Request, State}, middleware::Next, response::{IntoResponse, Response}, routing::post, Router
 };
 use bytes::Bytes;
 use futures_util::StreamExt;
@@ -167,7 +162,17 @@ async fn regenerate(State(state): State<AppState>) -> Result<(), Error> {
     Ok(())
 }
 
-async fn upload(State(state): State<AppState>, body: Body) -> Result<(), Error> {
+#[derive(serde::Deserialize)]
+pub struct UploadQuery {
+    #[serde(default = "falsey")]
+    ignore_exists: bool
+}
+
+fn falsey() -> bool {
+    false
+}
+
+async fn upload(State(state): State<AppState>, Query(UploadQuery { ignore_exists }): Query<UploadQuery>, body: Body) -> Result<(), Error> {
     let (output_tx, output) = tokio::sync::oneshot::channel();
     let (bytes_tx, bytes_rx) = tokio::sync::mpsc::channel(50);
     let deb_dir = state.config.server.deb_directory.clone();
@@ -179,9 +184,10 @@ async fn upload(State(state): State<AppState>, body: Body) -> Result<(), Error> 
     while let Some(d) = body_stream.next().await.transpose()? {
         bytes_tx.send(d).await.map_err(Error::InvalidSend)?;
     }
-    output.await.map_err(|_| Error::BackgroundCrashed)??;
-
-    Ok(())
+    match output.await.map_err(|_| Error::BackgroundCrashed)? {
+        Err(Error::AlreadyExists) if ignore_exists => Ok(()),
+        v => v
+    }
 }
 
 fn deb_channel_to_storage(
