@@ -89,7 +89,7 @@ jobs:
       - name: Upload debfiles
         uses: actions/upload-artifact@v4
         with:
-          name: deb-${{ matrix.platform.slug }}
+          name: deb-${{ matrix.platform }}
           path: target/deb/*
 
       - run: ls -la target/deb
