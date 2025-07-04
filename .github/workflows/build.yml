@@ -72,12 +72,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: exe-${{ matrix.platform }}
+          path: executables
 
       - name: Place binaries
         run: |
           ls -la
           mkdir -p target/release/
-          cp exe-${{ matrix.platform }}/${{ matrix.module }} target/release/
+          cp executables/${{ matrix.module }} target/release/
 
       - name: Generate deb templates
         run: debpkg.sh ${{ matrix.module }} ${{ matrix.platform }}
@@ -91,7 +92,7 @@ jobs:
           name: deb-${{ matrix.platform.slug }}
           path: target/deb/*
 
-      - run: ls -la
+      - run: ls -la target/deb
 
   regenerate-debs:
     needs: [build-debs]
