@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - metapackage/**
+      - .github/workflows/metapackage.yml
   workflow_dispatch:
 
 permissions:
