@@ -87,19 +87,28 @@ jobs:
       - name: Package debfiles
         run: dpkg --build target/deb/*
 
+      - name: Get deb file path
+        run: echo "path=$(find target/deb/ -name '*.deb')" >> $GITHUB_OUTPUT
+        id: get-path
+
       - name: Upload debfiles
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.module }}-${{ matrix.platform }}-debfile
-          path: target/deb/*.deb
+          path: ${{ steps.get-path.outputs.path }}
 
-      - run: ls -la target/deb
+      - name: Publish debfiles
+        uses: randomairborne/godsvagn-upload@dce6f43bb5179a7b68e6f3743f26ed8477bac961
+        with:
+          file: ${{ steps.get-path.outputs.path }}
+          upload_url: https://apt-submit.valk.sh/upload
 
-  regenerate-debs:
-    needs: [build-debs]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
 
-      
+  # regenerate-debs:
+  #   needs: [build-debs]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v4
+
+
