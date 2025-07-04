@@ -1,7 +1,7 @@
 Package: godsvagn
 Version: 1
 Maintainer: valkyrie_pilot <valk@randomairborne.dev>
-Depends: godsvagn-server godsvagn-repogen
+Depends: godsvagn-server, godsvagn-repogen
 Architecture: all
 Homepage: https://github.com/randomairborne/godsvagn
 Description: Apt repo host with github integration
