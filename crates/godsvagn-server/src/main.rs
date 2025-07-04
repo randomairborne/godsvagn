@@ -9,13 +9,18 @@ use std::{
 };
 
 use axum::{
-    body::Body, extract::{Query, Request, State}, middleware::Next, response::{IntoResponse, Response}, routing::post, Router
+    Router,
+    body::Body,
+    extract::{Query, Request, State},
+    middleware::Next,
+    response::{IntoResponse, Response},
+    routing::post,
 };
 use bytes::Bytes;
 use futures_util::StreamExt;
 use jsonwebtoken::{DecodingKey, Validation, jwk::JwkSet};
 use parsedeb::RequiredFields;
-use rand::{distr::Alphabetic, Rng};
+use rand::{Rng, distr::Alphabetic};
 use reqwest::StatusCode;
 use tokio::{
     net::TcpListener,
@@ -150,7 +155,11 @@ async fn regenerate(State(state): State<AppState>) -> Result<(), Error> {
         .stderr(Stdio::inherit());
     let output = cmd.spawn()?.wait().await?;
     if output.success() {
-        let dir_suffix: String = rand::rng().sample_iter(Alphabetic).take(16).map(char::from).collect();
+        let dir_suffix: String = rand::rng()
+            .sample_iter(Alphabetic)
+            .take(16)
+            .map(char::from)
+            .collect();
         let to_delete = std::env::temp_dir().join(dir_suffix);
         std::fs::rename(&state.config.server.repo_directory, &to_delete)?;
         std::fs::rename(output_tmp, &state.config.server.repo_directory)?;
@@ -165,14 +174,18 @@ async fn regenerate(State(state): State<AppState>) -> Result<(), Error> {
 #[derive(serde::Deserialize)]
 pub struct UploadQuery {
     #[serde(default = "falsey")]
-    ignore_exists: bool
+    ignore_exists: bool,
 }
 
 fn falsey() -> bool {
     false
 }
 
-async fn upload(State(state): State<AppState>, Query(UploadQuery { ignore_exists }): Query<UploadQuery>, body: Body) -> Result<(), Error> {
+async fn upload(
+    State(state): State<AppState>,
+    Query(UploadQuery { ignore_exists }): Query<UploadQuery>,
+    body: Body,
+) -> Result<(), Error> {
     let (output_tx, output) = tokio::sync::oneshot::channel();
     let (bytes_tx, bytes_rx) = tokio::sync::mpsc::channel(50);
     let deb_dir = state.config.server.deb_directory.clone();
@@ -186,7 +199,7 @@ async fn upload(State(state): State<AppState>, Query(UploadQuery { ignore_exists
     }
     match output.await.map_err(|_| Error::BackgroundCrashed)? {
         Err(Error::AlreadyExists) if ignore_exists => Ok(()),
-        v => v
+        v => v,
     }
 }
 
