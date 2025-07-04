@@ -1,0 +1,101 @@
+name: Build Container
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+
+  build-exes:
+    needs: [check]
+    runs-on: ${{ matrix.platform.gha-image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - slug: amd64
+            gha-image: ubuntu-24.04
+          - slug: arm64
+            gha-image: ubuntu-24.04-arm
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install cargo
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Prepare cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.platform.slug }}
+
+      - name: Build binary
+        run: cargo b --release --all
+
+      - name: move binaries
+        run: |
+          mkdir exes
+          cp target/release/godsvagn-server exes/
+          cp target/release/godsvagn-repogen exes/
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: exe-${{ matrix.platform.slug }}
+          path: exes/*
+
+  build-debs:
+    needs: [build-exes]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [godsvagn-repogen, godsvagn-server]
+        platform: [amd64, arm64]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install cargo
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install apt dependencies
+        run: sudo apt-get install jq dpkg-dev
+
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: exe-${{ matrix.platform }}
+
+      - name: Place binaries
+        run: |
+          ls -la
+          mkdir -p target/release/
+          cp exe-${{ matrix.platform }}/${{ matrix.module }} target/release/
+
+      - name: Generate deb templates
+        run: debpkg.sh ${{ matrix.module }} ${{ matrix.platform }}
+
+      - name: Package debfiles
+        run: dpkg --build target/deb/*
+
+      - name: Upload debfiles
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.platform.slug }}
+          path: target/deb/*
+
+      - run: ls -la
+
+  regenerate-debs:
+    needs: [build-debs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
