@@ -81,7 +81,7 @@ jobs:
           cp executables/${{ matrix.module }} target/release/
 
       - name: Generate deb templates
-        run: debpkg.sh ${{ matrix.module }} ${{ matrix.platform }}
+        run: ./debpkg.sh ${{ matrix.module }} ${{ matrix.platform }}
 
       - name: Package debfiles
         run: dpkg --build target/deb/*
