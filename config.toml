@@ -1,7 +1,14 @@
+[server]
+bind = "0.0.0.0:8080"
+deb_directory = "debstore"
+repo_directory = "www-published"
+audiences = ["https://github.com/randomairborne"]
+keyfile = "private.asc"
+
 [release]
 origin = "godsvagn"
 label = "godsvagn"
 suite = "testing"
 codename = "salolampi"
 version = "0.1"
-description = ""
+description = "An example release. fi.wikipedia.org/wiki/Salolampi"

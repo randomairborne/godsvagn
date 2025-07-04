@@ -1,6 +1,6 @@
 use std::{
     fs::OpenOptions,
-    io::{BufReader, Seek},
+    io::{BufReader, Error as IoError, ErrorKind as IoErrorKind, Seek},
     path::{Path, PathBuf},
 };
 
@@ -8,8 +8,23 @@ use filemeta::{FileMeta, FileSums};
 use indexgen::ReleaseMetadata;
 use md5::{Digest, Md5};
 use package::{Package, PackageMeta};
+use parsedeb::RequiredFields;
 use pgp::composed::{Deserializable, SignedSecretKey};
-use std::io::{Error as IoError, ErrorKind as IoErrorKind};
+
+#[derive(serde::Deserialize, Debug)]
+pub struct Config {
+    pub release: ConfigReleaseMetadata,
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub struct ConfigReleaseMetadata {
+    pub origin: String,
+    pub label: String,
+    pub suite: String,
+    pub codename: String,
+    pub version: String,
+    pub description: String,
+}
 
 #[derive(argh::FromArgs)]
 #[argh(description = "Generate a valid debian repository from a directory full of .deb files")]
@@ -34,7 +49,7 @@ struct Args {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Args = argh::from_env();
     let config = std::fs::read_to_string(&args.config)?;
-    let config: godsvagn::Config = toml::from_str(&config)?;
+    let config: Config = toml::from_str(&config)?;
 
     let key = SignedSecretKey::from_armor_file(&args.keyfile)?.0;
 
@@ -155,12 +170,12 @@ enum PackageReadError {
     Io(#[from] std::io::Error),
     #[error("{0}")]
     PackageRead(#[from] parsedeb::Error),
-    #[error("missing field {0}")]
-    MissingField(&'static str),
     #[error("non-utf-8 path encountered")]
     InvalidPath,
     #[error("Files more than 4 gb are only supported on 64 bit platforms")]
     FileTooBig,
+    #[error("Could not deserialize controlfile")]
+    InvalidControl,
 }
 
 fn read_package(p: &Path) -> Result<Package, PackageReadError> {
@@ -184,8 +199,11 @@ fn read_package(p: &Path) -> Result<Package, PackageReadError> {
     };
 
     let description_md5 = fields
-        .get("Description")
-        .and_then(|v| /* accounts for the "starting at the second character" rule */ v.get(1..))
+        .iter()
+        .find(|(k, _v)| k.eq_ignore_ascii_case("description"))
+        .and_then(
+            |(_k, v)| /* accounts for the "starting at the second character" rule */ v.get(1..),
+        )
         .map(|v| Md5::new().chain_update(v).finalize())
         .unwrap_or_else(|| Md5::new().finalize())
         .into();
@@ -195,23 +213,14 @@ fn read_package(p: &Path) -> Result<Package, PackageReadError> {
         description_md5,
     };
 
-    let name = fields
-        .get("Package")
-        .ok_or(PackageReadError::MissingField("Package"))?
-        .trim()
-        .into();
-    let architecture = fields
-        .get("Architecture")
-        .ok_or(PackageReadError::MissingField("Architecture"))?
-        .trim()
-        .into();
-    let version = fields
-        .get("Version")
-        .ok_or(PackageReadError::MissingField("Version"))?
-        .trim()
-        .into();
+    let RequiredFields {
+        package: name,
+        architecture,
+        version,
+        ..
+    } = RequiredFields::from_map(&fields).ok_or(PackageReadError::InvalidControl)?;
 
-    let path = format!("pool/main/{name}_{version}_{architecture}.deb").into_boxed_str();
+    let path = format!("pool/main/{name}_{version}_{architecture}.deb",).into_boxed_str();
 
     let package = Package {
         meta: PackageMeta {

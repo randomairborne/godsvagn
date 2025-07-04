@@ -1,25 +1,7 @@
-[package]
-name = "godsvagn"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-serde = { version = "1", features = ["derive"] }
-toml = "0.8"
-base16ct = "0.2"
-thiserror = "2"
-pgp = "0.16"
-indexmap = "2"
-jiff = "0.2"
-parsedeb = { workspace = true }
-filemeta = { workspace = true }
-indexgen = { workspace = true }
-package = { workspace = true }
-md-5 = "0.10.6"
-argh = "0.1.13"
-
 [workspace]
-members = ["crates/package", "crates/filemeta", "crates/indexgen", "crates/parsedeb"]
+default-members = ["crates/godsvagn-server"]
+members = ["crates/package", "crates/filemeta", "crates/indexgen", "crates/parsedeb", "crates/godsvagn-repogen", "crates/godsvagn-server"]
+resolver = "3"
 
 [workspace.dependencies]
 parsedeb = { path = "crates/parsedeb" }

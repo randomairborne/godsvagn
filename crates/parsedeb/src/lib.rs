@@ -1,4 +1,4 @@
-use std::{io::Read, str::FromStr};
+use std::{collections::HashMap, io::Read, str::FromStr};
 
 use indexmap::IndexMap;
 
@@ -7,15 +7,49 @@ mod tests;
 
 type PackageMap = IndexMap<Box<str>, Box<str>>;
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+/// Required fields, trimmed
+pub struct RequiredFields {
+    pub package: Box<str>,
+    pub version: Box<str>,
+    pub architecture: Box<str>,
+    pub maintainer: Box<str>,
+    pub description: Box<str>,
+}
+
+impl RequiredFields {
+    /// Get a struct of the fields that are required for debian binary packages
+    /// this trims whitespaces and otherwise loses data! do not use for hashing!
+    pub fn from_map(input: &IndexMap<Box<str>, Box<str>>) -> Option<RequiredFields> {
+        let mut requireds: HashMap<RequiredField, Box<str>> = input
+            .iter()
+            .filter_map(|(k, v)| Some((RequiredField::from_str(k).ok()?, v.trim().into())))
+            .collect();
+
+        let required = RequiredFields {
+            package: requireds.remove(&RequiredField::Package)?,
+            version: requireds.remove(&RequiredField::Version)?,
+            architecture: requireds.remove(&RequiredField::Architecture)?,
+            maintainer: requireds.remove(&RequiredField::Maintainer)?,
+            description: requireds.remove(&RequiredField::Description)?,
+        };
+        Some(required)
+    }
+}
+
+impl RequiredFields {
+    pub fn name(&self) -> &str {
+        &self.package
+    }
+}
+
 pub fn deb_to_control(deb: impl std::io::Read) -> Result<(PackageMap, Box<str>), Error> {
     let raw_controlfile = parse_debfile(deb)?;
-    Ok((
-        get_control(&raw_controlfile)?
-            .into_iter()
-            .map(pack)
-            .collect(),
-        raw_controlfile,
-    ))
+    let package_map = get_control(&raw_controlfile)?
+        .into_iter()
+        .map(pack)
+        .collect();
+    Ok((package_map, raw_controlfile))
 }
 
 pub fn pack((a, b): (&str, &str)) -> (Box<str>, Box<str>) {
@@ -45,6 +79,8 @@ pub enum Error {
     NoControl,
     #[error("control file has a first field other than the package name")]
     DoesNotStartWithPackage,
+    #[error("missing field- this error state should be a bug")]
+    MissingUnknownFields,
     #[error("missing fields: {}", UnbracketedList(.0))]
     MissingFields(Vec<RequiredField>),
     #[error("includes forbidden fields {}", UnbracketedList(.0))]
@@ -74,6 +110,7 @@ pub fn get_control(control: &str) -> Result<IndexMap<&str, &str>, Error> {
     if !keys.forbidden.is_empty() {
         return Err(Error::ForbiddenFields(keys.forbidden));
     }
+
     Ok(parsed_map)
 }
 
@@ -111,6 +148,7 @@ impl std::fmt::Display for RequiredField {
 
 impl std::str::FromStr for RequiredField {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
             "package" => Ok(Self::Package),
@@ -149,6 +187,7 @@ impl std::fmt::Display for ForbiddenField {
 
 impl std::str::FromStr for ForbiddenField {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
             "filename" => Ok(Self::Filename),
@@ -172,6 +211,7 @@ enum ParseState<'a> {
     ValueNewLine(&'a str, usize),
 }
 
+/// returns an unmodified but otherwise parsed controlfile
 pub fn parse_control(input: &str) -> Result<IndexMap<&str, &str>, ParseError> {
     let mut output = IndexMap::new();
 

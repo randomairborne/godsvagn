@@ -1,3 +1,9 @@
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    fmt::Write,
+    io::Write as _,
+};
+
 use base16ct::HexDisplay;
 use filemeta::FileMeta;
 use flate2::{Compression, GzBuilder};
@@ -7,11 +13,6 @@ use pgp::{
     packet::SecretKey,
     ser::Serialize,
     types::Password,
-};
-use std::{
-    collections::{HashMap, hash_map::Entry},
-    fmt::Write,
-    io::Write as _,
 };
 
 const ARMOR_OPTS: ArmorOptions = ArmorOptions {
