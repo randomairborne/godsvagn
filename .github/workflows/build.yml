@@ -79,6 +79,7 @@ jobs:
           ls -la
           mkdir -p target/release/
           cp executables/${{ matrix.module }} target/release/
+          chmod a+x target/release/${{ matrix.module }}
 
       - name: Generate deb templates
         run: ./debpkg.sh ${{ matrix.module }} ${{ matrix.platform }}
