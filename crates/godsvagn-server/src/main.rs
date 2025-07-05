@@ -239,6 +239,7 @@ fn find_location_and_move_deb_to_storage(
         "{architecture}/{name}_{version}_{architecture}.deb"
     ));
     let outfile = OpenOptions::new()
+        .write(true)
         .create_new(true)
         .open(outfile_path)
         .map_err(|e| {
