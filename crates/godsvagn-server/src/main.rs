@@ -187,17 +187,22 @@ async fn upload(
     body: Body,
 ) -> Result<(), Error> {
     let (output_tx, output) = tokio::sync::oneshot::channel();
-    let (bytes_tx, bytes_rx) = tokio::sync::mpsc::channel(50);
-    let deb_dir = state.config.server.deb_directory.clone();
-    std::thread::spawn(move || {
-        let o = deb_channel_to_storage(bytes_rx, &deb_dir);
-        if let Err(e) = output_tx.send(o) {
-            eprintln!("Failed to send output to parent thread: {e:?}");
+    // this block drops the body sender to prevent a deadlock of the background task
+    // waiting for more data, while the "no more data" signal sent by dropping bytes_tx will
+    // never be sent because it would be waiting on output.await
+    {
+        let (bytes_tx, bytes_rx) = tokio::sync::mpsc::channel(50);
+        let deb_dir = state.config.server.deb_directory.clone();
+        std::thread::spawn(move || {
+            let o = deb_channel_to_storage(bytes_rx, &deb_dir);
+            if let Err(e) = output_tx.send(o) {
+                eprintln!("Failed to send output to parent thread: {e:?}");
+            }
+        });
+        let mut body_stream = body.into_data_stream();
+        while let Some(d) = body_stream.next().await.transpose()? {
+            bytes_tx.send(d).await.map_err(Error::InvalidSend)?;
         }
-    });
-    let mut body_stream = body.into_data_stream();
-    while let Some(d) = body_stream.next().await.transpose()? {
-        bytes_tx.send(d).await.map_err(Error::InvalidSend)?;
     }
     match output.await.map_err(|_| Error::BackgroundCrashed)? {
         Err(Error::AlreadyExists) if ignore_exists => Ok(()),
