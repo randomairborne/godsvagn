@@ -238,6 +238,7 @@ fn find_location_and_move_deb_to_storage(
     let outfile_path = deb_directory.join(format!(
         "{architecture}/{name}_{version}_{architecture}.deb"
     ));
+    std::fs::create_dir_all(outfile_path.parent().ok_or(Error::NoParent)?)?;
     let outfile = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -271,6 +272,8 @@ enum Error {
     GenerateFailed,
     #[error("already exists")]
     AlreadyExists,
+    #[error("tried to take parent of root- this should be impossible")]
+    NoParent,
     #[error("invalid jwt")]
     Jwt(#[from] jsonwebtoken::errors::Error),
     #[error("invalid header")]
