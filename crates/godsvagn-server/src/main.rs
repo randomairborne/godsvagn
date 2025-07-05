@@ -191,7 +191,9 @@ async fn upload(
     let deb_dir = state.config.server.deb_directory.clone();
     std::thread::spawn(move || {
         let o = deb_channel_to_storage(bytes_rx, &deb_dir);
-        output_tx.send(o).unwrap();
+        if let Err(e) = output_tx.send(o) {
+            eprintln!("Failed to send output to parent thread: {e:?}");
+        }
     });
     let mut body_stream = body.into_data_stream();
     while let Some(d) = body_stream.next().await.transpose()? {
