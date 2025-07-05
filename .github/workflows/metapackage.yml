@@ -24,3 +24,7 @@ jobs:
           name: deb
           path: metapackage.deb
           compression-level: 0
+      - uses: randomairborne/godsvagn-upload@dce6f43bb5179a7b68e6f3743f26ed8477bac961
+        with:
+          regenerate_url: https://apt-submit.valk.sh/regenerate
+
