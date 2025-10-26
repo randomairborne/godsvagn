@@ -69,7 +69,7 @@ jobs:
         run: sudo apt-get install jq dpkg-dev
 
       - name: Download binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: exe-${{ matrix.platform }}
           path: executables
