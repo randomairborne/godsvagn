@@ -26,7 +26,7 @@ jobs:
             gha-image: ubuntu-22.04-arm
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install cargo
         uses: dtolnay/rust-toolchain@stable
@@ -60,7 +60,7 @@ jobs:
         platform: [amd64, arm64]
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install cargo
         uses: dtolnay/rust-toolchain@stable
