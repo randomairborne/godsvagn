@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
-base16ct = "0.2"
+base16ct = "0.3"
 thiserror = "2"
 pgp = "0.16"
 indexmap = "2"

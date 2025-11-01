@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 filemeta = { workspace = true }
-base16ct = "0.2"
+base16ct = "0.3"
 indexmap = "2"
