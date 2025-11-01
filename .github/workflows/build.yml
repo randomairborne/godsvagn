@@ -46,7 +46,7 @@ jobs:
           cp target/release/godsvagn-repogen exes/
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: exe-${{ matrix.platform.slug }}
           path: exes/*
@@ -92,7 +92,7 @@ jobs:
         id: get-path
 
       - name: Upload debfiles
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.module }}-${{ matrix.platform }}-debfile
           path: ${{ steps.get-path.outputs.path }}
