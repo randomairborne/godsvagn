@@ -1,5 +1,3 @@
 # godsvagn
 
-i wrote all of this and then someone convinced me to move back to docker
-
-kill me now please
+Godsvagn is software to ease the upload and distribution of Debian packages from disconnected CI systems.
